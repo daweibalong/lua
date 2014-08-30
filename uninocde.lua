@@ -58,11 +58,11 @@ function UTF16To8(utf16, order)
 			table.insert(result, string.format("%c", low))
 		elseif r >= 0x80 and r <= 0x7FF then
 			table.insert(result, string.format("%c%c", bor(BYTE_2_HEAD, band(bnot(BYTE_2_MASK), rshift(r, 6))),
-													   bor(BYTE_TAIL_HEAD, band(BYTE_TAIL_MASK, r))))
+								   bor(BYTE_TAIL_HEAD, band(BYTE_TAIL_MASK, r))))
 		elseif r >= 0x800 and r <= 0xFFFF then
 			table.insert(result, string.format("%c%c%c", bor(BYTE_3_HEAD, band(bnot(BYTE_3_MASK), rshift(r, 12))),
-														 bor(BYTE_TAIL_HEAD, band(BYTE_TAIL_MASK, rshift(r, 6))),
-														 bor(BYTE_TAIL_HEAD, band(BYTE_TAIL_MASK, r))))
+								     bor(BYTE_TAIL_HEAD, band(BYTE_TAIL_MASK, rshift(r, 6))),
+								     bor(BYTE_TAIL_HEAD, band(BYTE_TAIL_MASK, r))))
 		end
 	end
 	return table.concat(result)
