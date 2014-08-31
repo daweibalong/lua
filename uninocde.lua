@@ -24,22 +24,19 @@ function UTF8To16(utf8, order)
 	while i <= len do
 		b1 = string.byte(utf8, i)
 		if band(b1, BYTE_1_MASK) == BYTE_1_HEAD then		-- 0### ####
-			low = b1; high = 0
+			low = b1; high = 0; i = i + 1
 		elseif band(b1, BYTE_2_MASK) == BYTE_2_HEAD then 	-- 110# ####
 			b2 = string.byte(utf8, i + 1)
 			high = rshift(band(bnot(BYTE_2_MASK), b1), 2)
 			low = bor(band(BYTE_TAIL_MASK, b2), lshift(b1, 6))
-			i = i + 1
+			i = i + 2
 		elseif band(b1, BYTE_3_MASK) == BYTE_3_HEAD then	-- 1110 ####
 			b2, b3 = string.byte(utf8, i + 1, i + 2)
 			high = bor(lshift(b1, 4), rshift(band(BYTE_TAIL_MASK, b2), 2))
 			low = bor(lshift(b2, 6), band(BYTE_TAIL_MASK, b3))
-			i = i + 2
+			i = i + 3
 		end
-		i = i + 1
-		if order == DE then
-			low, high = high, low
-		end
+		if order == DE then low, high = high, low end
 		table.insert(result, string.format("%c%c", low, high))
 	end
 	return table.concat(result)
@@ -57,18 +54,88 @@ function UTF16To8(utf16, order)
 		if r <= 0x7F then
 			table.insert(result, string.format("%c", low))
 		elseif r >= 0x80 and r <= 0x7FF then
-			table.insert(result, string.format("%c%c", bor(BYTE_2_HEAD, band(bnot(BYTE_2_MASK), rshift(r, 6))),
-								   bor(BYTE_TAIL_HEAD, band(BYTE_TAIL_MASK, r))))
+			table.insert(result, string.format("%c%c",
+			bor(BYTE_2_HEAD, band(bnot(BYTE_2_MASK), rshift(r, 6))),
+			bor(BYTE_TAIL_HEAD, band(BYTE_TAIL_MASK, r))))
 		elseif r >= 0x800 and r <= 0xFFFF then
-			table.insert(result, string.format("%c%c%c", bor(BYTE_3_HEAD, band(bnot(BYTE_3_MASK), rshift(r, 12))),
-								     bor(BYTE_TAIL_HEAD, band(BYTE_TAIL_MASK, rshift(r, 6))),
-								     bor(BYTE_TAIL_HEAD, band(BYTE_TAIL_MASK, r))))
+			table.insert(result, string.format("%c%c%c", 
+			bor(BYTE_3_HEAD, band(bnot(BYTE_3_MASK), rshift(r, 12))),
+			bor(BYTE_TAIL_HEAD, band(BYTE_TAIL_MASK, rshift(r, 6))),
+			bor(BYTE_TAIL_HEAD, band(BYTE_TAIL_MASK, r))))
 		end
 	end
 	return table.concat(result)
 end
 
+-- Tail Call
+function UTF8To16_TailCall(utf8, order)
+	function tail(utf8, start, result)
+		if start > #utf8 then
+			return result
+		end
+
+		local b1 = string.byte(utf8, start)
+		local low, high = 0, 0
+
+		if band(b1, BYTE_1_MASK) == BYTE_1_HEAD then		-- 0### ####
+			low = b1; high = 0; start = start + 1
+		elseif band(b1, BYTE_2_MASK) == BYTE_2_HEAD then 	-- 110# ####
+			b2 = string.byte(utf8, start + 1)
+			high = rshift(band(bnot(BYTE_2_MASK), b1), 2)
+			low = bor(band(BYTE_TAIL_MASK, b2), lshift(b1, 6))
+			start = start + 2
+		elseif band(b1, BYTE_3_MASK) == BYTE_3_HEAD then	-- 1110 ####
+			b2, b3 = string.byte(utf8, start + 1, start + 2)
+			high = bor(lshift(b1, 4), rshift(band(BYTE_TAIL_MASK, b2), 2))
+			low = bor(lshift(b2, 6), band(BYTE_TAIL_MASK, b3))
+			start = start + 3
+		end
+		if order == DE then low, high = high, low end
+		table.insert(result, string.format("%c%c", low, high))
+		return tail(utf8, start, result)
+	end
+	return table.concat(tail(utf8, 1, {}))
+end
+
+function UTF16To8_TailCall(utf16, order)
+	function tail(utf16_str, start, result)
+		if start > #utf16_str then
+			return result
+		end
+
+		local low, high = string.byte(utf16_str, start, start + 1)
+		if order == DE then low, high = high, low end
+		local r = bor(lshift(high, 8), low)
+
+		if r <= 0x7F then
+			table.insert(result, string.format("%c", low))
+		elseif r >= 0x80 and r <= 0x7FF then
+			table.insert(result, string.format("%c%c",
+			bor(BYTE_2_HEAD, band(bnot(BYTE_2_MASK), rshift(r, 6))),
+			bor(BYTE_TAIL_HEAD, band(BYTE_TAIL_MASK, r))))
+		elseif r >= 0x800 and r <= 0xFFFF then
+			table.insert(result, string.format("%c%c%c",
+			bor(BYTE_3_HEAD, band(bnot(BYTE_3_MASK), rshift(r, 12))),
+			bor(BYTE_TAIL_HEAD, band(BYTE_TAIL_MASK, rshift(r, 6))),
+			bor(BYTE_TAIL_HEAD, band(BYTE_TAIL_MASK, r))))
+		end
+		return tail(utf16_str, start + 2, result)
+	end
+
+	local t = tail(utf16, 1, {})
+	return table.concat(t)
+end
+
+-- Test
 local test = "a朱a"
-local utf16 = UTF8To16(test, LE)
-local utf8 = UTF16To8(utf16, LE)
-print(utf8)
+do
+	local r = UTF8To16_TailCall(test, LE)
+	local r2 = UTF16To8_TailCall(r, LE)
+	print(r2)
+end
+
+do
+	local r = UTF8To16(test, LE)
+	local r2 = UTF16To8(r, LE)
+	print(r2)
+end
