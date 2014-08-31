@@ -94,6 +94,7 @@ function UTF8To16_TailCall(utf8, order)
 		table.insert(result, string.format("%c%c", low, high))
 		return tail(utf8, start, result)
 	end
+	
 	return table.concat(tail(utf8, 1, {}))
 end
 
@@ -121,9 +122,8 @@ function UTF16To8_TailCall(utf16, order)
 		end
 		return tail(utf16_str, start + 2, result)
 	end
-
-	local t = tail(utf16, 1, {})
-	return table.concat(t)
+	
+	return table.concat(tail(utf16, 1, {}))
 end
 
 -- Test
