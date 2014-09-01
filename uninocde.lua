@@ -7,7 +7,7 @@ local DE = 0x2
 local BYTE_1_HEAD = 0x00		-- 0000 0000
 local BYTE_2_HEAD = 0xC0		-- 1100 0000
 local BYTE_3_HEAD = 0xE0		-- 1110 0000
-local BYTE_TAIL_HEAD = 0x80     -- 1000 0000
+local BYTE_TAIL_HEAD = 0x80		-- 1000 0000
 
 local BYTE_1_MASK = 0x80		-- 1000 0000
 local BYTE_2_MASK = 0xE0		-- 1110 0000
@@ -15,29 +15,34 @@ local BYTE_3_MASK = 0xF0		-- 1111 0000
 
 local BYTE_TAIL_MASK = 0x3F		-- 0011 1111
 
+local Format_char = function(b)
+	return string.format("%c", b)
+end
+
 function UTF8To16(utf8, order)
 	assert(type(utf8) == 'string')
 	local result, tmp = {}, {}
 	local i, b1, b2, b3, high, low = 1, 0, 0, 0, 0, 0
 	local len = #utf8
 
+
 	while i <= len do
 		b1 = string.byte(utf8, i)
 		if band(b1, BYTE_1_MASK) == BYTE_1_HEAD then		-- 0### ####
-			low = b1; high = 0; i = i + 1
+			low = Format_char(b1); high = "\0"; i = i + 1
 		elseif band(b1, BYTE_2_MASK) == BYTE_2_HEAD then 	-- 110# ####
 			b2 = string.byte(utf8, i + 1)
-			high = rshift(band(bnot(BYTE_2_MASK), b1), 2)
-			low = bor(band(BYTE_TAIL_MASK, b2), lshift(b1, 6))
+			high = Format_char(rshift(band(bnot(BYTE_2_MASK), b1), 2))
+			low =  Format_char(bor(band(BYTE_TAIL_MASK, b2), lshift(b1, 6)))
 			i = i + 2
 		elseif band(b1, BYTE_3_MASK) == BYTE_3_HEAD then	-- 1110 ####
 			b2, b3 = string.byte(utf8, i + 1, i + 2)
-			high = bor(lshift(b1, 4), rshift(band(BYTE_TAIL_MASK, b2), 2))
-			low = bor(lshift(b2, 6), band(BYTE_TAIL_MASK, b3))
+			high = Format_char(bor(lshift(b1, 4), rshift(band(BYTE_TAIL_MASK, b2), 2)))
+			low = Format_char(bor(lshift(b2, 6), band(BYTE_TAIL_MASK, b3)))
 			i = i + 3
 		end
 		if order == DE then low, high = high, low end
-		table.insert(result, string.format("%c%c", low, high))
+		table.insert(result, low .. high)
 	end
 	return table.concat(result)
 end
@@ -50,7 +55,7 @@ function UTF16To8(utf16, order)
 		low, high = string.byte(utf16, i, i + 1)
 		if order == DE then low, high = high, low end
 		r = bor(lshift(high, 8), low)
-		
+
 		if r <= 0x7F then
 			table.insert(result, string.format("%c", low))
 		elseif r >= 0x80 and r <= 0x7FF then
@@ -76,25 +81,25 @@ function UTF8To16_TailCall(utf8, order)
 
 		local b1 = string.byte(utf8, start)
 		local low, high = 0, 0
-
+		local r = ""
 		if band(b1, BYTE_1_MASK) == BYTE_1_HEAD then		-- 0### ####
-			low = b1; high = 0; start = start + 1
+			low = Format_char(b1); high = "\0"; start = start + 1
 		elseif band(b1, BYTE_2_MASK) == BYTE_2_HEAD then 	-- 110# ####
 			b2 = string.byte(utf8, start + 1)
-			high = rshift(band(bnot(BYTE_2_MASK), b1), 2)
-			low = bor(band(BYTE_TAIL_MASK, b2), lshift(b1, 6))
+			high = Format_char(rshift(band(bnot(BYTE_2_MASK), b1), 2))
+			low = Format_char(bor(band(BYTE_TAIL_MASK, b2), lshift(b1, 6)))
 			start = start + 2
 		elseif band(b1, BYTE_3_MASK) == BYTE_3_HEAD then	-- 1110 ####
 			b2, b3 = string.byte(utf8, start + 1, start + 2)
-			high = bor(lshift(b1, 4), rshift(band(BYTE_TAIL_MASK, b2), 2))
-			low = bor(lshift(b2, 6), band(BYTE_TAIL_MASK, b3))
+			high = Format_char(bor(lshift(b1, 4), rshift(band(BYTE_TAIL_MASK, b2), 2)))
+			low = Format_char(bor(lshift(b2, 6), band(BYTE_TAIL_MASK, b3)))
 			start = start + 3
 		end
 		if order == DE then low, high = high, low end
-		table.insert(result, string.format("%c%c", low, high))
+		table.insert(result, low .. high)
 		return tail(utf8, start, result)
 	end
-	
+
 	return table.concat(tail(utf8, 1, {}))
 end
 
@@ -122,12 +127,13 @@ function UTF16To8_TailCall(utf16, order)
 		end
 		return tail(utf16_str, start + 2, result)
 	end
-	
+
 	return table.concat(tail(utf16, 1, {}))
 end
 
 -- Test
 local test = "a朱a"
+print(test)
 do
 	local r = UTF8To16_TailCall(test, LE)
 	local r2 = UTF16To8_TailCall(r, LE)
