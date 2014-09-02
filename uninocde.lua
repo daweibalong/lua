@@ -60,11 +60,11 @@ function UTF16To8(utf16, order)
 			table.insert(result, string.format("%c", low))
 		elseif r >= 0x80 and r <= 0x7FF then
 			table.insert(result, string.format("%c%c",
-			bor(BYTE_2_HEAD, band(bnot(BYTE_2_MASK), rshift(r, 6))),
+			bor(BYTE_2_HEAD, rshift(r, 6)),
 			bor(BYTE_TAIL_HEAD, band(BYTE_TAIL_MASK, r))))
 		elseif r >= 0x800 and r <= 0xFFFF then
 			table.insert(result, string.format("%c%c%c", 
-			bor(BYTE_3_HEAD, band(bnot(BYTE_3_MASK), rshift(r, 12))),
+			bor(BYTE_3_HEAD, rshift(r, 12)),
 			bor(BYTE_TAIL_HEAD, band(BYTE_TAIL_MASK, rshift(r, 6))),
 			bor(BYTE_TAIL_HEAD, band(BYTE_TAIL_MASK, r))))
 		end
@@ -81,7 +81,6 @@ function UTF8To16_TailCall(utf8, order)
 
 		local b1 = string.byte(utf8, start)
 		local low, high = 0, 0
-		local r = ""
 		if band(b1, BYTE_1_MASK) == BYTE_1_HEAD then		-- 0### ####
 			low = Format_char(b1); high = "\0"; start = start + 1
 		elseif band(b1, BYTE_2_MASK) == BYTE_2_HEAD then 	-- 110# ####
@@ -117,11 +116,11 @@ function UTF16To8_TailCall(utf16, order)
 			table.insert(result, string.format("%c", low))
 		elseif r >= 0x80 and r <= 0x7FF then
 			table.insert(result, string.format("%c%c",
-			bor(BYTE_2_HEAD, band(bnot(BYTE_2_MASK), rshift(r, 6))),
+			bor(BYTE_2_HEAD, rshift(r, 6)),
 			bor(BYTE_TAIL_HEAD, band(BYTE_TAIL_MASK, r))))
 		elseif r >= 0x800 and r <= 0xFFFF then
 			table.insert(result, string.format("%c%c%c",
-			bor(BYTE_3_HEAD, band(bnot(BYTE_3_MASK), rshift(r, 12))),
+			bor(BYTE_3_HEAD, rshift(r, 12)),
 			bor(BYTE_TAIL_HEAD, band(BYTE_TAIL_MASK, rshift(r, 6))),
 			bor(BYTE_TAIL_HEAD, band(BYTE_TAIL_MASK, r))))
 		end
