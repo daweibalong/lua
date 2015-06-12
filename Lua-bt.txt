@@ -1,0 +1,87 @@
+
+.if (${/d:$arg1})
+{
+	$$ Get lua_State from the adress
+	aS ${/v:tolua_S} ((lua_State*)${$arg1})
+	
+	.block
+	{
+		$$ distance
+		r $t19 = @@C++(${tolua_S}->ci) - @@C++(${tolua_S}->base_ci)
+
+		$$ offset step
+		r $t18 = @@C++(&${tolua_S}->ci[1]) - @@C++(${tolua_S}->ci)
+
+		$$ stack size
+		r $t17 = @$t19 / @$t18
+
+		.while(@$t17 >= 0)
+		{
+			$$ func
+			r $t0 = @@C++(${tolua_S}->base_ci[@$t17].func)
+
+			.if(@$t0 > 0) 
+			{
+				$$ tt
+				r $t1 = @@C++(${tolua_S}->base_ci[@$t17].func->tt)
+
+				$$ lua_function
+				.if(@$t1 == 0x6)
+				{
+					$$ isC
+					r $t5 = @@C++(${tolua_S}->base_ci[@$t17].func->value.gc->cl.c.isC)
+
+					$$ lua function
+					.if(@$t5 == 0)
+					{
+						$$ filename
+						r $t6 = @@C++((char *)(${tolua_S}->base_ci[@$t17].func->value.gc->cl.l.p->source + 1))
+
+						$$ savedpc
+						.if (@@C++(${tolua_S}->ci) == @@C++(&(${tolua_S}->base_ci[@$t17])))
+						{
+							r $t2 = @@C++(${tolua_S}->savedpc)
+						}
+						.else
+						{
+							r $t2 = @@C++(${tolua_S}->base_ci[@$t17].savedpc)
+						}
+
+						$$ code
+						r $t3 = @@C++(${tolua_S}->base_ci[@$t17].func->value.gc->cl.l.p->code)
+
+						$$ lineno
+						r $t7 = @@C++(${tolua_S}->base_ci[@$t17].func->value.gc->cl.l.p->lineinfo[(@$t2 - @$t3) / 4 - 1])
+
+						.printf "%ma:%d\n", $t6,  @$t7
+					}
+					.elsif (@$t5 == 1) 
+					{
+						$$ C function
+						.printf "C function:%y\n", @@C++(${tolua_S}->base_ci[@$t17].func->value.gc->cl.c.f)
+					}
+				}
+				.elsif(@$t1 == 0x16)
+				{
+					.printf "light C function\n"
+				}
+				.elsif(@$t1 == 0x26)
+				{
+					.printf "C function\n"
+				}
+				.else
+				{
+					.printf "lua_base\n"
+				}
+			}
+			.elsif(@$t0 == 0)
+			{
+				.printf "[tail]\n"
+			}
+			r $t17 = @$t17 - 1 
+		}
+
+		$$ delete aliases
+		ad * 
+	}
+}
