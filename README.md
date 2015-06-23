@@ -11,4 +11,4 @@ $$>a< lua-bt.txt 0x1234567
 
 # ast_tool
 ## ast.lua 
-ast与lua源码之间的相互转
+ast与lua源码之间的相互转换
